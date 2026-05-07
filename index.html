@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SistemaMant Pro — Control de Mantenimiento</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1483,7 +1484,7 @@ function renderDepartamentos() {
 }
 
 // ======= GUARDAR =======
-function guardarMantenimiento() {
+async function guardarMantenimiento() {
   const fecha    = document.getElementById('r-fecha').value;
   const equipoId = parseInt(document.getElementById('r-equipo').value);
   const tipo     = document.getElementById('r-tipo').value;
@@ -1496,16 +1497,23 @@ function guardarMantenimiento() {
   if (!fecha || !equipoId || !tipo || !tecnico || !desc) {
     msg.className = 'msg-err'; msg.textContent = '⚠ Complete todos los campos obligatorios.'; return;
   }
-  db.mantenimientos.push({ id: db.nextId.mant++, fecha, equipoId, tipo, tecnico, descripcion: desc, costo, ref });
-  saveDB();
-  msg.className = 'msg-ok'; msg.textContent = '✓ Registro guardado correctamente.';
-  ['r-equipo','r-tipo'].forEach(id => document.getElementById(id).value = '');
-  ['r-tecnico','r-desc','r-costo','r-ref'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('r-fecha').valueAsDate = new Date();
-  setTimeout(() => msg.textContent = '', 3500);
+  try {
+    const { error } = await supabase.from('mantenimientos').insert([
+      { fecha, equipoId, tipo, tecnico, descripcion: desc, costo, ref }
+    ]);
+    if (error) throw error;
+    msg.className = 'msg-ok'; msg.textContent = '✓ Registro guardado correctamente.';
+    ['r-equipo','r-tipo'].forEach(id => document.getElementById(id).value = '');
+    ['r-tecnico','r-desc','r-costo','r-ref'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('r-fecha').valueAsDate = new Date();
+    await loadData();
+    setTimeout(() => msg.textContent = '', 3500);
+  } catch(e) {
+    msg.className = 'msg-err'; msg.textContent = '❌ Error: ' + e.message;
+  }
 }
 
-function guardarEquipo() {
+async function guardarEquipo() {
   const nombre   = document.getElementById('e-nombre').value.trim();
   const deptId   = parseInt(document.getElementById('e-dept').value);
   const tipo     = document.getElementById('e-tipo').value;
@@ -1515,48 +1523,69 @@ function guardarEquipo() {
   const msg      = document.getElementById('e-msg');
 
   if (!nombre || !deptId) { msg.className = 'msg-err'; msg.textContent = '⚠ Complete nombre y departamento.'; return; }
-  db.equipos.push({ id: db.nextId.equipo++, nombre, tipo, deptId, modelo, serie, ubicacion });
-  saveDB();
-  msg.className = 'msg-ok'; msg.textContent = '✓ Equipo agregado.';
-  ['e-nombre','e-modelo','e-serie','e-ubicacion'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('e-dept').value = '';
-  renderEquipos();
-  setTimeout(() => msg.textContent = '', 3500);
+  try {
+    const { error } = await supabase.from('equipos').insert([
+      { nombre, tipo, deptId, modelo, serie, ubicacion }
+    ]);
+    if (error) throw error;
+    msg.className = 'msg-ok'; msg.textContent = '✓ Equipo agregado.';
+    ['e-nombre','e-modelo','e-serie','e-ubicacion'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('e-dept').value = '';
+    await loadData();
+    setTimeout(() => msg.textContent = '', 3500);
+  } catch(e) {
+    msg.className = 'msg-err'; msg.textContent = '❌ Error: ' + e.message;
+  }
 }
 
-function guardarDepartamento() {
+async function guardarDepartamento() {
   const nombre    = document.getElementById('d-nombre').value.trim();
   const frecuencia= parseInt(document.getElementById('d-freq').value);
   const msg       = document.getElementById('d-msg');
   if (!nombre) { msg.className = 'msg-err'; msg.textContent = '⚠ Ingrese el nombre.'; return; }
-  db.departamentos.push({ id: db.nextId.dept++, nombre, frecuencia });
-  saveDB();
-  msg.className = 'msg-ok'; msg.textContent = '✓ Departamento creado.';
-  document.getElementById('d-nombre').value = '';
-  renderDepartamentos(); populateSelects();
-  setTimeout(() => msg.textContent = '', 3500);
+  try {
+    const { error } = await supabase.from('departamentos').insert([
+      { nombre, frecuencia }
+    ]);
+    if (error) throw error;
+    msg.className = 'msg-ok'; msg.textContent = '✓ Departamento creado.';
+    document.getElementById('d-nombre').value = '';
+    await loadData();
+    setTimeout(() => msg.textContent = '', 3500);
+  } catch(e) {
+    msg.className = 'msg-err'; msg.textContent = '❌ Error: ' + e.message;
+  }
 }
 
 // ======= ELIMINAR =======
-function eliminarMant(id) {
+async function eliminarMant(id) {
   if (!confirm('¿Eliminar este registro?')) return;
-  db.mantenimientos = db.mantenimientos.filter(m => m.id !== id);
-  saveDB(); renderHistorial();
+  try {
+    const { error } = await supabase.from('mantenimientos').delete().eq('id', id);
+    if (error) throw error;
+    await loadData(); renderHistorial();
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
-function eliminarEquipo(id) {
+async function eliminarEquipo(id) {
   const cnt = db.mantenimientos.filter(m => m.equipoId == id).length;
   if (cnt > 0 && !confirm(`Este equipo tiene ${cnt} registro(s). ¿Continuar?`)) return;
-  db.mantenimientos = db.mantenimientos.filter(m => m.equipoId !== id);
-  db.equipos = db.equipos.filter(e => e.id !== id);
-  saveDB(); renderEquipos();
+  try {
+    await supabase.from('mantenimientos').delete().eq('equipoId', id);
+    const { error } = await supabase.from('equipos').delete().eq('id', id);
+    if (error) throw error;
+    await loadData(); renderEquipos();
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
-function eliminarDept(id) {
+async function eliminarDept(id) {
   const cnt = db.equipos.filter(e => e.deptId == id).length;
   if (cnt > 0) { alert(`Este departamento tiene ${cnt} equipo(s) asignado(s). Elimínelos primero.`); return; }
-  db.departamentos = db.departamentos.filter(d => d.id !== id);
-  saveDB(); renderDepartamentos();
+  try {
+    const { error } = await supabase.from('departamentos').delete().eq('id', id);
+    if (error) throw error;
+    await loadData(); renderDepartamentos();
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 // ======= EXPORT =======
@@ -1576,8 +1605,7 @@ function exportarCSV() {
 
 // ======= INIT =======
 document.getElementById('r-fecha').valueAsDate = new Date();
-populateSelects();
-renderDashboard();
+loadData();
 </script>
 </body>
 </html>
