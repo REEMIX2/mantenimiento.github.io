@@ -1,0 +1,1583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SistemaMant Pro — Control de Mantenimiento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #070b18;
+  --surface: #0f1528;
+  --surface2: #161d35;
+  --surface3: #1e263e;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.12);
+  --text: #eef0f8;
+  --text2: #7a85a3;
+  --text3: #3d4566;
+  --accent: #5b6ef5;
+  --accent2: #818cf8;
+  --glow: rgba(91,110,245,0.15);
+  --success: #22d3a0;
+  --success-bg: rgba(34,211,160,0.1);
+  --warn: #f5a623;
+  --warn-bg: rgba(245,166,35,0.1);
+  --danger: #f05575;
+  --danger-bg: rgba(240,85,117,0.1);
+  --radius: 12px;
+  --radius-lg: 18px;
+  --sidebar-w: 260px;
+  --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 99px; }
+
+/* Sidebar */
+.shell { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.logo {
+  padding: 2rem 1.5rem 1.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--glow);
+  border: 1px solid rgba(91,110,245,0.3);
+  color: var(--accent2);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 99px;
+  margin-bottom: 1rem;
+}
+
+.logo h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+  margin-bottom: 0.25rem;
+}
+
+.logo p { font-size: 0.82rem; color: var(--text3); }
+
+nav { padding: 1rem 0.75rem; flex: 1; }
+
+.nav-section {
+  padding: 0.75rem 0.75rem 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text3);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius);
+  font-size: 0.93rem;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  transition: all var(--transition);
+  margin-bottom: 2px;
+  position: relative;
+}
+
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active {
+  background: var(--glow);
+  color: var(--accent2);
+  font-weight: 600;
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 25%;
+  bottom: 25%;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 0 3px 3px 0;
+}
+
+.nav-icon { font-size: 1.1rem; flex-shrink: 0; width: 1.5rem; text-align: center; }
+
+.sidebar-footer {
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text3);
+}
+
+.pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 2px var(--success-bg);
+  animation: pulse-anim 2s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse-anim {
+  0%, 100% { box-shadow: 0 0 0 2px var(--success-bg); }
+  50% { box-shadow: 0 0 0 5px rgba(34,211,160,0.05); }
+}
+
+/* Main */
+.main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2.5rem;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.topbar-left { display: flex; flex-direction: column; }
+.topbar-title { font-size: 1rem; font-weight: 600; color: var(--text); }
+.topbar-sub { font-size: 0.78rem; color: var(--text3); }
+
+.topbar-right { display: flex; align-items: center; gap: 0.75rem; }
+
+.content { padding: 2rem 2.5rem; flex: 1; }
+
+.page { display: none; }
+.page.active { display: block; animation: fade-up 0.25s ease; }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Stat cards */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition);
+}
+
+.stat-card:hover {
+  border-color: rgba(91,110,245,0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+}
+
+.stat-card-accent {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.stat-icon {
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.stat-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text3);
+  margin-bottom: 0.4rem;
+}
+
+.stat-value {
+  font-size: 2.75rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1;
+}
+
+.stat-desc {
+  font-size: 0.8rem;
+  color: var(--text3);
+  margin-top: 0.4rem;
+}
+
+.c-blue { color: var(--accent2); }
+.c-green { color: var(--success); }
+.c-warn { color: var(--warn); }
+.c-danger { color: var(--danger); }
+
+/* Dashboard row layout */
+.dash-row {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.card-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text2);
+}
+
+/* Alerts */
+.alert-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.alert-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  font-size: 0.87rem;
+  border: 1px solid;
+}
+
+.alert-danger { background: var(--danger-bg); border-color: rgba(240,85,117,0.25); }
+.alert-warn   { background: var(--warn-bg); border-color: rgba(245,166,35,0.25); }
+.alert-ok     { background: var(--success-bg); border-color: rgba(34,211,160,0.25); font-size: 0.85rem; color: var(--success); text-align: center; padding: 1.25rem; justify-content: center; }
+
+.alert-icon { flex-shrink: 0; font-size: 1rem; margin-top: 1px; }
+.alert-body { flex: 1; }
+.alert-body strong { color: var(--text); }
+.alert-body .alert-sub { color: var(--text2); font-size: 0.82rem; margin-top: 2px; }
+
+/* Table */
+.table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+table { width: 100%; border-collapse: collapse; }
+
+thead { background: var(--surface2); }
+
+th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+td {
+  padding: 0.85rem 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+  vertical-align: middle;
+}
+
+tbody tr { transition: background var(--transition); }
+tbody tr:hover td { background: rgba(91,110,245,0.04); }
+
+.td-sub { font-size: 0.78rem; color: var(--text2); margin-top: 1px; }
+.td-mono { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.28rem 0.7rem;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.badge-green  { background: var(--success-bg); color: var(--success); border: 1px solid rgba(34,211,160,0.2); }
+.badge-warn   { background: var(--warn-bg);    color: var(--warn);    border: 1px solid rgba(245,166,35,0.2); }
+.badge-danger { background: var(--danger-bg);  color: var(--danger);  border: 1px solid rgba(240,85,117,0.2); }
+.badge-blue   { background: var(--glow);       color: var(--accent2); border: 1px solid rgba(91,110,245,0.2); }
+.badge-gray   { background: var(--surface3);   color: var(--text2);   border: 1px solid var(--border); }
+
+/* Equipment avatar */
+.eq-cell { display: flex; align-items: center; gap: 10px; }
+.eq-avatar {
+  width: 36px;
+  height: 36px;
+  background: var(--surface3);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.eq-name { font-weight: 600; }
+
+/* Progress bar */
+.prog {
+  height: 5px;
+  background: var(--surface3);
+  border-radius: 99px;
+  overflow: hidden;
+  width: 100px;
+}
+.prog-fill { height: 100%; border-radius: 99px; }
+
+/* Forms */
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 1.5rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+}
+
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.form-group.full { grid-column: 1 / -1; }
+
+label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text2);
+}
+
+input, select, textarea {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.93rem;
+  padding: 0.65rem 0.9rem;
+  outline: none;
+  transition: all var(--transition);
+  width: 100%;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  background: var(--surface3);
+  box-shadow: 0 0 0 3px rgba(91,110,245,0.12);
+}
+
+input::placeholder, textarea::placeholder { color: var(--text3); }
+select option { background: var(--surface2); color: var(--text); }
+textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
+
+/* Frequency chips */
+.freq-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.freq-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  cursor: pointer;
+  transition: all var(--transition);
+  user-select: none;
+  min-width: 90px;
+  text-align: center;
+}
+
+.freq-chip:hover {
+  border-color: rgba(91,110,245,0.4);
+  background: var(--surface3);
+}
+
+.freq-chip.selected {
+  border-color: var(--accent);
+  background: var(--glow);
+  box-shadow: 0 0 0 3px rgba(91,110,245,0.12);
+}
+
+.freq-chip-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.freq-chip.selected .freq-chip-label { color: var(--accent2); }
+
+.freq-chip-sub {
+  font-size: 0.7rem;
+  color: var(--text3);
+  margin-top: 2px;
+}
+
+.freq-chip.selected .freq-chip-sub { color: rgba(129,140,248,0.7); }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  border-radius: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all var(--transition);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(91,110,245,0.3);
+}
+
+.btn-primary:hover {
+  background: var(--accent2);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(91,110,245,0.4);
+}
+
+.btn-ghost {
+  background: var(--surface2);
+  color: var(--text2);
+  border: 1px solid var(--border2);
+}
+
+.btn-ghost:hover { background: var(--surface3); color: var(--text); }
+
+.btn-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid rgba(240,85,117,0.2);
+}
+
+.btn-danger:hover { background: rgba(240,85,117,0.2); }
+.btn-sm { padding: 0.4rem 0.8rem; font-size: 0.82rem; border-radius: 8px; }
+
+/* Filter bar */
+.filter-bar {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.filter-bar input { flex: 2; min-width: 180px; }
+.filter-bar select { flex: 1; min-width: 140px; }
+
+/* Dept card */
+.dept-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  margin-bottom: 0.75rem;
+  transition: all var(--transition);
+}
+
+.dept-card:hover {
+  border-color: rgba(91,110,245,0.25);
+  background: var(--surface3);
+}
+
+.dept-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--glow);
+  border: 1px solid rgba(91,110,245,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.dept-info { flex: 1; }
+.dept-name { font-weight: 700; font-size: 0.95rem; }
+.dept-meta { font-size: 0.8rem; color: var(--text2); margin-top: 2px; }
+
+/* Messages */
+.msg-ok  { display: inline-flex; align-items: center; gap: 6px; color: var(--success); font-size: 0.88rem; margin-top: 0.6rem; }
+.msg-err { display: inline-flex; align-items: center; gap: 6px; color: var(--danger);  font-size: 0.88rem; margin-top: 0.6rem; }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 3.5rem 1rem;
+  color: var(--text3);
+}
+
+.empty-state-icon { font-size: 3rem; margin-bottom: 0.75rem; }
+.empty-state p { font-size: 0.9rem; }
+
+/* Mini donut chart — CSS only */
+.mini-donut {
+  width: 100px;
+  height: 100px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.donut-ring {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: conic-gradient(var(--success) var(--ok-pct), var(--warn) var(--ok-pct) var(--warn-pct), var(--danger) var(--warn-pct) 360deg);
+}
+
+.donut-hole {
+  position: absolute;
+  inset: 18px;
+  background: var(--surface);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text2);
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* Legend */
+.legend { display: flex; flex-direction: column; gap: 0.6rem; flex: 1; justify-content: center; }
+.legend-item { display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .dash-row { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 860px) {
+  :root { --sidebar-w: 70px; }
+  .logo h1, .logo p, .logo-badge, .nav-section, .sidebar-footer .sidebar-badge span { display: none; }
+  .nav-item span:last-child { display: none; }
+  .content { padding: 1.5rem; }
+  .topbar { padding: 0 1.5rem; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .form-grid-3 { grid-template-columns: 1fr; }
+}
+
+/* ===== MOBILE (≤ 600px) ===== */
+.bottom-nav { display: none; }
+
+@media (max-width: 600px) {
+  :root { --sidebar-w: 0px; }
+
+  /* Hide sidebar completely */
+  .sidebar { display: none !important; }
+
+  /* Bottom navigation bar */
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 200;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 10px 4px;
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: var(--text3);
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: 'Outfit', sans-serif;
+    transition: color var(--transition);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .bottom-nav-item.active { color: var(--accent2); }
+  .bottom-nav-item .bn-icon { font-size: 1.3rem; line-height: 1; }
+
+  /* Main area takes full width */
+  .main { margin-left: 0; }
+
+  /* Topbar mobile */
+  .topbar {
+    padding: 0 1rem;
+    height: 56px;
+  }
+
+  .topbar-right .btn-ghost { display: none; }
+  .topbar-right .btn-primary {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.82rem;
+  }
+
+  /* Content padding + space for bottom nav */
+  .content {
+    padding: 1rem;
+    padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Stats grid single column on very small, 2 col on medium mobile */
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-bottom: 1rem; }
+
+  .stat-card { padding: 1rem; }
+  .stat-value { font-size: 2rem; }
+  .stat-icon { font-size: 1.35rem; margin-bottom: 0.5rem; }
+
+  /* Card padding */
+  .card { padding: 1rem; }
+
+  /* Forms */
+  .form-grid, .form-grid-3 { grid-template-columns: 1fr; gap: 0.9rem; }
+
+  input, select, textarea {
+    font-size: 1rem; /* prevents iOS zoom */
+    padding: 0.75rem 0.9rem;
+  }
+
+  /* Buttons */
+  .btn { padding: 0.75rem 1rem; }
+  .btn-primary { width: 100%; justify-content: center; }
+
+  /* Tables → card list on mobile */
+  .table-wrap { border: none; border-radius: 0; overflow: visible; }
+  table, thead, tbody, th, td, tr { display: block; }
+  thead { display: none; }
+
+  tbody tr {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 0.75rem;
+    padding: 0.9rem;
+    position: relative;
+  }
+
+  tbody tr:hover td { background: transparent; }
+
+  td {
+    border: none;
+    padding: 0.2rem 0;
+    font-size: 0.88rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  td::before {
+    content: attr(data-label);
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text3);
+    min-width: 80px;
+    flex-shrink: 0;
+  }
+
+  /* First td (equipo name) gets special treatment */
+  td:first-child { margin-bottom: 0.35rem; }
+  td:first-child::before { display: none; }
+  td:first-child .eq-cell { flex-direction: row; }
+
+  /* Action buttons in table */
+  td:last-child { justify-content: flex-end; margin-top: 0.35rem; }
+  td:last-child::before { display: none; }
+
+  /* Progress bar in td */
+  .prog { width: 70px; }
+
+  /* Dept cards */
+  .dept-card { flex-wrap: wrap; gap: 0.6rem; }
+
+  /* Filter bar */
+  .filter-bar { flex-direction: column; gap: 0.6rem; }
+  .filter-bar input, .filter-bar select { width: 100%; min-width: unset; flex: none; }
+
+  /* Dash row */
+  .dash-row { gap: 0.85rem; margin-bottom: 0.85rem; }
+
+  /* Chart card compact */
+  .mini-donut { width: 80px; height: 80px; }
+
+  /* Alert items */
+  .alert-item { font-size: 0.82rem; padding: 0.7rem; }
+
+  /* Section title */
+  .section-title { font-size: 0.95rem; margin-bottom: 1rem; }
+
+  /* Freq chips */
+  .freq-chip { min-width: 70px; padding: 0.5rem 0.6rem; }
+  .freq-chip-label { font-size: 0.78rem; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-badge">⚙ Pro v2.1</div>
+      <h1>SistemaMant</h1>
+      <p>Control Integral de TI</p>
+    </div>
+    <nav>
+      <div class="nav-section">Principal</div>
+      <button class="nav-item active" id="nav-dashboard" onclick="goTo('dashboard', this)">
+        <span class="nav-icon">📊</span><span>Dashboard</span>
+      </button>
+      <button class="nav-item" id="nav-registro" onclick="goTo('registro', this)">
+        <span class="nav-icon">➕</span><span>Registrar</span>
+      </button>
+      <button class="nav-item" id="nav-historial" onclick="goTo('historial', this)">
+        <span class="nav-icon">📋</span><span>Historial</span>
+      </button>
+      <div class="nav-section">Administración</div>
+      <button class="nav-item" id="nav-equipos" onclick="goTo('equipos', this)">
+        <span class="nav-icon">💻</span><span>Equipos</span>
+      </button>
+      <button class="nav-item" id="nav-departamentos" onclick="goTo('departamentos', this)">
+        <span class="nav-icon">🏢</span><span>Departamentos</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-badge">
+        <div class="pulse"></div>
+        <span>Datos locales activos</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- BOTTOM NAV (mobile only) -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="bottom-nav-item active" id="bn-dashboard" onclick="goTo('dashboard', this, true)">
+      <span class="bn-icon">📊</span>Dashboard
+    </button>
+    <button class="bottom-nav-item" id="bn-registro" onclick="goTo('registro', this, true)">
+      <span class="bn-icon">➕</span>Registrar
+    </button>
+    <button class="bottom-nav-item" id="bn-historial" onclick="goTo('historial', this, true)">
+      <span class="bn-icon">📋</span>Historial
+    </button>
+    <button class="bottom-nav-item" id="bn-equipos" onclick="goTo('equipos', this, true)">
+      <span class="bn-icon">💻</span>Equipos
+    </button>
+    <button class="bottom-nav-item" id="bn-departamentos" onclick="goTo('departamentos', this, true)">
+      <span class="bn-icon">🏢</span>Deptos
+    </button>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title" id="topbar-title">Panel General</div>
+        <div class="topbar-sub" id="topbar-sub">Resumen del estado de mantenimiento</div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn btn-ghost btn-sm" onclick="exportarCSV()">⬇ Exportar CSV</button>
+        <button class="btn btn-primary btn-sm" onclick="goTo('registro', document.getElementById('nav-registro'))">+ Nuevo registro</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div id="page-dashboard" class="page active">
+
+        <div class="stats-grid" id="stats-grid"></div>
+
+        <div class="dash-row">
+          <!-- Alerts -->
+          <div class="card" style="margin-bottom:0">
+            <div class="card-header">
+              <div class="card-title">Alertas activas</div>
+              <span id="alert-count-badge"></span>
+            </div>
+            <div class="alert-list" id="alertas-zone"></div>
+          </div>
+          <!-- Chart summary -->
+          <div class="card" style="margin-bottom:0">
+            <div class="card-header">
+              <div class="card-title">Estado global</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:1.5rem; justify-content:center; padding: 0.5rem 0;">
+              <div class="mini-donut" id="mini-donut">
+                <div class="donut-ring" id="donut-ring"></div>
+                <div class="donut-hole" id="donut-label">—</div>
+              </div>
+              <div class="legend" id="chart-legend"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Equipos table -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Equipos — Próximos mantenimientos</div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Equipo</th>
+                  <th>Departamento</th>
+                  <th>Tipo</th>
+                  <th>Último mant.</th>
+                  <th>Próximo</th>
+                  <th>Progreso</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-dashboard"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- REGISTRO -->
+      <div id="page-registro" class="page">
+        <div class="card">
+          <div class="section-title">Nuevo Registro de Mantenimiento</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Fecha del mantenimiento *</label>
+              <input type="date" id="r-fecha">
+            </div>
+            <div class="form-group">
+              <label>Equipo *</label>
+              <select id="r-equipo"><option value="">— Seleccionar equipo —</option></select>
+            </div>
+            <div class="form-group">
+              <label>Tipo de mantenimiento *</label>
+              <select id="r-tipo">
+                <option value="">— Seleccionar tipo —</option>
+                <option>Preventivo</option>
+                <option>Correctivo</option>
+                <option>Limpieza interna</option>
+                <option>Actualización de software</option>
+                <option>Cambio de componente</option>
+                <option>Revisión general</option>
+                <option>Formateo / Reinstalación</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Técnico responsable *</label>
+              <input type="text" id="r-tecnico" placeholder="Nombre del técnico">
+            </div>
+            <div class="form-group">
+              <label>Costo (USD, opcional)</label>
+              <input type="number" id="r-costo" placeholder="0.00" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+              <label>Nº de orden / referencia</label>
+              <input type="text" id="r-ref" placeholder="OT-2026-001">
+            </div>
+            <div class="form-group full">
+              <label>Descripción del trabajo *</label>
+              <textarea id="r-desc" placeholder="Detalle los trabajos realizados, piezas reemplazadas, software instalado, observaciones..."></textarea>
+            </div>
+          </div>
+          <div style="margin-top:1rem; display:flex; align-items:center; gap:1rem;">
+            <button class="btn btn-primary" onclick="guardarMantenimiento()">✓ Guardar registro</button>
+            <div id="r-msg"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORIAL -->
+      <div id="page-historial" class="page">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Todos los registros</div>
+            <span id="hist-count" style="font-size:0.82rem; color:var(--text2);"></span>
+          </div>
+          <div class="filter-bar">
+            <input type="text" id="f-buscar" placeholder="🔍 Buscar equipo, técnico, descripción..." oninput="renderHistorial()">
+            <select id="f-dept" onchange="renderHistorial()"><option value="">Todos los departamentos</option></select>
+            <select id="f-tipo" onchange="renderHistorial()">
+              <option value="">Todos los tipos</option>
+              <option>Preventivo</option><option>Correctivo</option><option>Limpieza interna</option>
+              <option>Actualización de software</option><option>Cambio de componente</option>
+              <option>Revisión general</option><option>Formateo / Reinstalación</option>
+            </select>
+            <select id="f-anio" onchange="renderHistorial()"><option value="">Todos los años</option></select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th><th>Equipo</th><th>Departamento</th><th>Tipo</th>
+                  <th>Técnico</th><th>Descripción</th><th>Costo</th><th>Ref.</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="tbody-historial"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- EQUIPOS -->
+      <div id="page-equipos" class="page">
+        <div class="card">
+          <div class="section-title">Agregar Equipo</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Nombre / ID del equipo *</label>
+              <input type="text" id="e-nombre" placeholder="PC-ADMIN-01, LAPTOP-VENTAS-03...">
+            </div>
+            <div class="form-group">
+              <label>Departamento *</label>
+              <select id="e-dept"><option value="">— Seleccionar —</option></select>
+            </div>
+            <div class="form-group">
+              <label>Tipo de equipo</label>
+              <select id="e-tipo">
+                <option>Desktop</option><option>Laptop</option><option>Servidor</option>
+                <option>Impresora</option><option>Monitor</option><option>Tablet</option><option>Otro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Marca / Modelo</label>
+              <input type="text" id="e-modelo" placeholder="Dell OptiPlex 7090, HP EliteBook...">
+            </div>
+            <div class="form-group">
+              <label>Serie / Inventario</label>
+              <input type="text" id="e-serie" placeholder="SN-ABC123">
+            </div>
+            <div class="form-group">
+              <label>Ubicación</label>
+              <input type="text" id="e-ubicacion" placeholder="Oficina 2, Piso 3...">
+            </div>
+          </div>
+          <div style="margin-top:1rem; display:flex; align-items:center; gap:1rem;">
+            <button class="btn btn-primary" onclick="guardarEquipo()">➕ Agregar equipo</button>
+            <div id="e-msg"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Inventario de equipos</div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Equipo</th><th>Tipo</th><th>Departamento</th><th>Marca/Modelo</th>
+                  <th>Serie</th><th>Ubicación</th><th>Mantenimientos</th><th>Último</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="tbody-equipos"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEPARTAMENTOS -->
+      <div id="page-departamentos" class="page">
+        <div class="card">
+          <div class="section-title">Nuevo Departamento</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Nombre del departamento *</label>
+              <input type="text" id="d-nombre" placeholder="Contabilidad, Ventas, RRHH...">
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label>Frecuencia de mantenimiento *</label>
+              <div class="freq-chips" id="freq-chips">
+                <div class="freq-chip selected" data-val="30" onclick="selectFreq(this)">
+                  <div class="freq-chip-label">Mensual</div>
+                  <div class="freq-chip-sub">30 días</div>
+                </div>
+                <div class="freq-chip" data-val="60" onclick="selectFreq(this)">
+                  <div class="freq-chip-label">Bimestral</div>
+                  <div class="freq-chip-sub">60 días</div>
+                </div>
+                <div class="freq-chip" data-val="90" onclick="selectFreq(this)">
+                  <div class="freq-chip-label">Trimestral</div>
+                  <div class="freq-chip-sub">90 días</div>
+                </div>
+                <div class="freq-chip" data-val="180" onclick="selectFreq(this)">
+                  <div class="freq-chip-label">Semestral</div>
+                  <div class="freq-chip-sub">180 días</div>
+                </div>
+                <div class="freq-chip" data-val="365" onclick="selectFreq(this)">
+                  <div class="freq-chip-label">Anual</div>
+                  <div class="freq-chip-sub">365 días</div>
+                </div>
+              </div>
+              <input type="hidden" id="d-freq" value="30">
+            </div>
+          </div>
+          <div style="margin-top:1.25rem; display:flex; align-items:center; gap:1rem;">
+            <button class="btn btn-primary" onclick="guardarDepartamento()">➕ Agregar departamento</button>
+            <div id="d-msg"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Departamentos registrados</div>
+          </div>
+          <div id="lista-departamentos"></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+  // ===== CONFIGURACIÓN SUPABASE =====
+  // REEMPLAZA ESTOS VALORES CON LOS TUYOS
+  const SUPABASE_URL = 'https://tnnqkskywaofcgansusb.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRubnFrc2t5d2FvZmNnYW5zdXNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxODE3ODMsImV4cCI6MjA5Mzc1Nzc4M30.dvoPpal_8BUN_yDi8Hx38iPbuv9ARucOjSnuH5UNwMk';
+  
+  const { createClient } = window.supabase;
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  
+  let db = { departamentos: [], equipos: [], mantenimientos: [] };
+  
+  // ===== CARGAR DATOS DESDE SUPABASE =====
+  async function loadData() {
+    try {
+      const [deptRes, equipRes, mantRes] = await Promise.all([
+        supabase.from('departamentos').select('*'),
+        supabase.from('equipos').select('*'),
+        supabase.from('mantenimientos').select('*')
+      ]);
+      
+      if (deptRes.error) throw deptRes.error;
+      if (equipRes.error) throw equipRes.error;
+      if (mantRes.error) throw mantRes.error;
+  
+      db.departamentos = deptRes.data || [];
+      db.equipos = equipRes.data || [];
+      db.mantenimientos = mantRes.data || [];
+  
+      console.log('✅ Datos cargados desde Supabase');
+      renderDashboard();
+    } catch(e) {
+      console.error('❌ Error cargando datos:', e.message);
+      alert('Error de conexión a Supabase. Verifica las credenciales.');
+    }
+  }
+
+// ======= HELPERS =======
+const getDept  = id => db.departamentos.find(d => d.id == id);
+const getEquip = id => db.equipos.find(e => e.id == id);
+const diasDesde = f => Math.floor((Date.now() - new Date(f + 'T00:00:00').getTime()) / 86400000);
+const addDays   = (f, n) => { const d = new Date(f + 'T00:00:00'); d.setDate(d.getDate() + n); return d; };
+const fmtFecha  = f => { if (!f) return '—'; return new Date(f + 'T00:00:00').toLocaleDateString('es-PA', { day:'2-digit', month:'short', year:'numeric' }); };
+const freqLabel = f => ({ 30:'Mensual', 60:'Bimestral', 90:'Trimestral', 180:'Semestral', 365:'Anual' })[f] || f + ' días';
+const tipoIcon  = t => ({ Desktop:'🖥', Laptop:'💻', Servidor:'🗄', Impresora:'🖨', Monitor:'🖼', Tablet:'📱', Otro:'📦' })[t] || '💻';
+
+function ultimoMant(eqId) {
+  return db.mantenimientos.filter(m => m.equipoId == eqId).sort((a,b) => b.fecha.localeCompare(a.fecha))[0] || null;
+}
+
+function estadoEquipo(eqId) {
+  const eq = getEquip(eqId);
+  const dept = getDept(eq?.deptId);
+  if (!dept) return { label:'Sin depto', cls:'badge-gray', pct:0, dias:null };
+  const um = ultimoMant(eqId);
+  if (!um) return { label:'Sin mantenimiento', cls:'badge-danger', pct:1, dias:null };
+  const trans = diasDesde(um.fecha);
+  const rest  = dept.frecuencia - trans;
+  const pct   = Math.min(trans / dept.frecuencia, 1);
+  if (pct >= 1)   return { label:'Vencido',    cls:'badge-danger', pct, dias: rest };
+  if (pct >= 0.8) return { label:'Por vencer', cls:'badge-warn',   pct, dias: rest };
+  return              { label:'Al día',     cls:'badge-green',  pct, dias: rest };
+}
+
+// ======= NAVIGATION =======
+const topbarMeta = {
+  dashboard:    ['Panel General',       'Resumen del estado de mantenimiento'],
+  registro:     ['Registrar Mantenimiento', 'Crea un nuevo registro de mantenimiento'],
+  historial:    ['Historial',           'Todos los registros de mantenimiento'],
+  equipos:      ['Equipos',             'Inventario de equipos de cómputo'],
+  departamentos:['Departamentos',       'Configura la frecuencia por área']
+};
+
+function goTo(page, btn, fromBottomNav) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  if (btn) btn.classList.add('active');
+  const sideBtn = document.getElementById('nav-' + page);
+  if (sideBtn) sideBtn.classList.add('active');
+  const bnBtn = document.getElementById('bn-' + page);
+  if (bnBtn) bnBtn.classList.add('active');
+  const [title, sub] = topbarMeta[page] || ['', ''];
+  document.getElementById('topbar-title').textContent = title;
+  document.getElementById('topbar-sub').textContent = sub;
+  window.scrollTo(0, 0);
+  populateSelects();
+  if (page === 'dashboard')    renderDashboard();
+  if (page === 'historial')    renderHistorial();
+  if (page === 'equipos')      renderEquipos();
+  if (page === 'departamentos') renderDepartamentos();
+  if (page === 'registro')      document.getElementById('r-fecha').valueAsDate = new Date();
+}
+
+// ======= FREQ CHIPS =======
+function selectFreq(el) {
+  document.querySelectorAll('.freq-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('d-freq').value = el.dataset.val;
+}
+
+// ======= POPULATE SELECTS =======
+function populateSelects() {
+  const sel = (id, opts, cur) => {
+    const el = document.getElementById(id);
+    const v = cur ?? el.value;
+    el.innerHTML = opts;
+    el.value = v;
+  };
+
+  sel('r-equipo', '<option value="">— Seleccionar equipo —</option>' +
+    db.equipos.map(e => { const d = getDept(e.deptId); return `<option value="${e.id}">${e.nombre}${d ? ' — ' + d.nombre : ''}</option>`; }).join(''));
+
+  sel('e-dept', '<option value="">— Seleccionar —</option>' +
+    db.departamentos.map(d => `<option value="${d.id}">${d.nombre}</option>`).join(''));
+
+  sel('f-dept', '<option value="">Todos los departamentos</option>' +
+    db.departamentos.map(d => `<option value="${d.id}">${d.nombre}</option>`).join(''));
+
+  const years = [...new Set(db.mantenimientos.map(m => m.fecha.slice(0,4)))].sort().reverse();
+  sel('f-anio', '<option value="">Todos los años</option>' +
+    years.map(y => `<option value="${y}">${y}</option>`).join(''));
+}
+
+// ======= DASHBOARD =======
+function renderDashboard() {
+  const total    = db.equipos.length;
+  const alDia    = db.equipos.filter(e => estadoEquipo(e.id).label === 'Al día').length;
+  const porVencer= db.equipos.filter(e => estadoEquipo(e.id).label === 'Por vencer').length;
+  const vencidos = db.equipos.filter(e => ['Vencido','Sin mantenimiento'].includes(estadoEquipo(e.id).label)).length;
+  const totalM   = db.mantenimientos.length;
+
+  // Stats
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-card-accent" style="background:linear-gradient(90deg,#5b6ef5,#818cf8)"></div>
+      <span class="stat-icon">💻</span>
+      <div class="stat-label">Total equipos</div>
+      <div class="stat-value c-blue">${total}</div>
+      <div class="stat-desc">registrados en sistema</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-accent" style="background:linear-gradient(90deg,#22d3a0,#34d399)"></div>
+      <span class="stat-icon">✅</span>
+      <div class="stat-label">Al día</div>
+      <div class="stat-value c-green">${alDia}</div>
+      <div class="stat-desc">mantenimiento vigente</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-accent" style="background:linear-gradient(90deg,#f5a623,#fbbf24)"></div>
+      <span class="stat-icon">⚠️</span>
+      <div class="stat-label">Por vencer</div>
+      <div class="stat-value c-warn">${porVencer}</div>
+      <div class="stat-desc">próximos 7 días</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-accent" style="background:linear-gradient(90deg,#f05575,#f87171)"></div>
+      <span class="stat-icon">🚨</span>
+      <div class="stat-label">Vencidos</div>
+      <div class="stat-value c-danger">${vencidos}</div>
+      <div class="stat-desc">requieren atención</div>
+    </div>`;
+
+  // Donut chart
+  const okPct   = total ? (alDia / total) * 360 : 0;
+  const warnPct = total ? ((alDia + porVencer) / total) * 360 : 0;
+  document.getElementById('donut-ring').style.cssText = `
+    width:100%; height:100%; border-radius:50%;
+    background: conic-gradient(
+      #22d3a0 0deg ${okPct}deg,
+      #f5a623 ${okPct}deg ${warnPct}deg,
+      #f05575 ${warnPct}deg 360deg
+    );`;
+  document.getElementById('donut-label').textContent = total ? `${alDia}/${total}\nequipos` : 'Sin\nequipos';
+  document.getElementById('chart-legend').innerHTML = `
+    <div class="legend-item"><div class="legend-dot" style="background:#22d3a0"></div>Al día <strong style="margin-left:auto;color:var(--success)">${alDia}</strong></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>Por vencer <strong style="margin-left:auto;color:var(--warn)">${porVencer}</strong></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f05575"></div>Vencidos <strong style="margin-left:auto;color:var(--danger)">${vencidos}</strong></div>`;
+
+  // Alerts
+  let alertas = '';
+  db.equipos.forEach(e => {
+    const est  = estadoEquipo(e.id);
+    const dept = getDept(e.deptId);
+    if (est.label === 'Vencido') {
+      alertas += `<div class="alert-item alert-danger"><div class="alert-icon">🔴</div><div class="alert-body"><strong>${e.nombre}</strong> · ${dept?.nombre || '—'}<div class="alert-sub">Vencido hace ${Math.abs(est.dias)} días</div></div></div>`;
+    } else if (est.label === 'Sin mantenimiento') {
+      alertas += `<div class="alert-item alert-danger"><div class="alert-icon">⚫</div><div class="alert-body"><strong>${e.nombre}</strong> · ${dept?.nombre || '—'}<div class="alert-sub">Sin historial de mantenimiento</div></div></div>`;
+    } else if (est.label === 'Por vencer') {
+      alertas += `<div class="alert-item alert-warn"><div class="alert-icon">🟡</div><div class="alert-body"><strong>${e.nombre}</strong> · ${dept?.nombre || '—'}<div class="alert-sub">Vence en ${est.dias} días</div></div></div>`;
+    }
+  });
+  document.getElementById('alertas-zone').innerHTML = alertas || '<div class="alert-item alert-ok">✅ Todos los equipos están al día</div>';
+
+  const alertCount = (vencidos + porVencer);
+  document.getElementById('alert-count-badge').innerHTML = alertCount > 0
+    ? `<span class="badge badge-danger">${alertCount} pendiente${alertCount>1?'s':''}</span>`
+    : `<span class="badge badge-green">OK</span>`;
+
+  // Table
+  const rows = db.equipos.map(e => {
+    const dept = getDept(e.deptId);
+    const um   = ultimoMant(e.id);
+    const est  = estadoEquipo(e.id);
+    const prox = um && dept ? fmtFecha(addDays(um.fecha, dept.frecuencia).toISOString().slice(0,10)) : '—';
+    const progColor = est.cls === 'badge-green' ? '#22d3a0' : est.cls === 'badge-warn' ? '#f5a623' : '#f05575';
+    const progW = Math.round(est.pct * 100);
+    const diasStr = est.dias !== null
+      ? (est.dias <= 0 ? `<span style="color:var(--danger)">${Math.abs(est.dias)}d vencido</span>` : `${est.dias}d`)
+      : '—';
+    return `<tr>
+      <td><div class="eq-cell"><div class="eq-avatar">${tipoIcon(e.tipo)}</div><div><div class="eq-name">${e.nombre}</div><div class="td-sub">${e.tipo}</div></div></div></td>
+      <td data-label="Departamento">${dept?.nombre || '<span style="color:var(--text3)">—</span>'}</td>
+      <td data-label="Tipo">${e.tipo}</td>
+      <td data-label="Último" class="td-mono">${um ? fmtFecha(um.fecha) : '<span style="color:var(--text3)">—</span>'}</td>
+      <td data-label="Próximo" class="td-mono">${prox}</td>
+      <td data-label="Progreso">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="prog"><div class="prog-fill" style="width:${progW}%;background:${progColor}"></div></div>
+          <span style="font-size:0.75rem;color:var(--text2);">${diasStr}</span>
+        </div>
+      </td>
+      <td data-label="Estado"><span class="badge ${est.cls}">${est.label}</span></td>
+    </tr>`;
+  }).sort((a,b) => {
+    const o = { 'Vencido':0,'Sin mantenimiento':1,'Por vencer':2,'Al día':3,'Sin depto':4 };
+    const la = a.match(/badge-(\w+)/)?.[0]; const lb = b.match(/badge-(\w+)/)?.[0];
+    return 0; // already ordered by label above
+  });
+
+  // Sort by status priority
+  const priority = { 'badge-danger':0, 'badge-warn':1, 'badge-green':2, 'badge-gray':3 };
+  const rowsWithPrio = db.equipos.map(e => {
+    const est = estadoEquipo(e.id);
+    return { e, est };
+  }).sort((a,b) => (priority[a.est.cls]??3) - (priority[b.est.cls]??3));
+
+  document.getElementById('tbody-dashboard').innerHTML = rowsWithPrio.length ? rowsWithPrio.map(({ e }) => {
+    const dept = getDept(e.deptId);
+    const um   = ultimoMant(e.id);
+    const est  = estadoEquipo(e.id);
+    const prox = um && dept ? fmtFecha(addDays(um.fecha, dept.frecuencia).toISOString().slice(0,10)) : '—';
+    const progColor = est.cls === 'badge-green' ? '#22d3a0' : est.cls === 'badge-warn' ? '#f5a623' : '#f05575';
+    const progW = Math.round(est.pct * 100);
+    const diasStr = est.dias !== null
+      ? (est.dias <= 0 ? `<span style="color:var(--danger)">${Math.abs(est.dias)}d vencido</span>` : `${est.dias}d`)
+      : '—';
+    return `<tr>
+      <td><div class="eq-cell"><div class="eq-avatar">${tipoIcon(e.tipo)}</div><div><div class="eq-name">${e.nombre}</div><div class="td-sub">${e.tipo}</div></div></div></td>
+      <td data-label="Departamento">${dept?.nombre || '<span style="color:var(--text3)">—</span>'}</td>
+      <td data-label="Tipo">${e.tipo}</td>
+      <td data-label="Último" class="td-mono">${um ? fmtFecha(um.fecha) : '<span style="color:var(--text3)">—</span>'}</td>
+      <td data-label="Próximo" class="td-mono">${prox}</td>
+      <td data-label="Progreso">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="prog"><div class="prog-fill" style="width:${progW}%;background:${progColor}"></div></div>
+          <span style="font-size:0.75rem;color:var(--text2);">${diasStr}</span>
+        </div>
+      </td>
+      <td data-label="Estado"><span class="badge ${est.cls}">${est.label}</span></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">💻</div><p>No hay equipos registrados</p></div></td></tr>';
+}
+
+// ======= HISTORIAL =======
+function renderHistorial() {
+  populateSelects();
+  const buscar = document.getElementById('f-buscar').value.toLowerCase();
+  const deptF  = document.getElementById('f-dept').value;
+  const tipoF  = document.getElementById('f-tipo').value;
+  const anioF  = document.getElementById('f-anio').value;
+
+  let ms = [...db.mantenimientos].sort((a,b) => b.fecha.localeCompare(a.fecha));
+  if (buscar) ms = ms.filter(m => { const eq = getEquip(m.equipoId); return [eq?.nombre, m.tecnico, m.tipo, m.descripcion, m.ref].some(v => v?.toLowerCase().includes(buscar)); });
+  if (deptF)  ms = ms.filter(m => getEquip(m.equipoId)?.deptId == deptF);
+  if (tipoF)  ms = ms.filter(m => m.tipo === tipoF);
+  if (anioF)  ms = ms.filter(m => m.fecha.startsWith(anioF));
+
+  document.getElementById('hist-count').textContent = `${ms.length} registro${ms.length !== 1 ? 's' : ''}`;
+
+  document.getElementById('tbody-historial').innerHTML = ms.length ? ms.map(m => {
+    const eq   = getEquip(m.equipoId);
+    const dept = getDept(eq?.deptId);
+    return `<tr>
+      <td data-label="Fecha" class="td-mono">${fmtFecha(m.fecha)}</td>
+      <td><div class="eq-name">${eq?.nombre || '—'}</div><div class="td-sub">${eq?.tipo || ''}</div></td>
+      <td data-label="Departamento">${dept?.nombre || '—'}</td>
+      <td data-label="Tipo"><span class="badge badge-blue">${m.tipo}</span></td>
+      <td data-label="Técnico">${m.tecnico}</td>
+      <td data-label="Descripción" style="max-width:200px;font-size:0.85rem;color:var(--text2);line-height:1.4">${m.descripcion}</td>
+      <td data-label="Costo" class="td-mono">${m.costo ? '$' + parseFloat(m.costo).toFixed(2) : '<span style="color:var(--text3)">—</span>'}</td>
+      <td data-label="Ref." class="td-mono" style="font-size:0.78rem;color:var(--text3)">${m.ref || '—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="eliminarMant(${m.id})">🗑</button></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="9"><div class="empty-state"><div class="empty-state-icon">📋</div><p>No se encontraron registros</p></div></td></tr>';
+}
+
+// ======= EQUIPOS =======
+function renderEquipos() {
+  populateSelects();
+  document.getElementById('tbody-equipos').innerHTML = db.equipos.length ? db.equipos.map(e => {
+    const dept = getDept(e.deptId);
+    const cnt  = db.mantenimientos.filter(m => m.equipoId == e.id).length;
+    const um   = ultimoMant(e.id);
+    return `<tr>
+      <td><div class="eq-cell"><div class="eq-avatar">${tipoIcon(e.tipo)}</div><div class="eq-name">${e.nombre}</div></div></td>
+      <td data-label="Tipo">${e.tipo}</td>
+      <td data-label="Departamento">${dept?.nombre || '—'}</td>
+      <td data-label="Modelo" style="color:var(--text2)">${e.modelo || '—'}</td>
+      <td data-label="Serie" class="td-mono" style="color:var(--text2)">${e.serie || '—'}</td>
+      <td data-label="Ubicación" style="color:var(--text2)">${e.ubicacion || '—'}</td>
+      <td data-label="Mants."><span class="badge badge-blue">${cnt}</span></td>
+      <td data-label="Último" class="td-mono">${um ? fmtFecha(um.fecha) : '<span style="color:var(--text3)">—</span>'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="eliminarEquipo(${e.id})">🗑</button></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="9"><div class="empty-state"><div class="empty-state-icon">💻</div><p>No hay equipos registrados</p></div></td></tr>';
+}
+
+// ======= DEPARTAMENTOS =======
+function renderDepartamentos() {
+  const div = document.getElementById('lista-departamentos');
+  if (!db.departamentos.length) {
+    div.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏢</div><p>No hay departamentos</p></div>'; return;
+  }
+  div.innerHTML = db.departamentos.map(d => {
+    const cnt     = db.equipos.filter(e => e.deptId == d.id).length;
+    const venc    = db.equipos.filter(e => e.deptId == d.id && ['Vencido','Sin mantenimiento'].includes(estadoEquipo(e.id).label)).length;
+    return `<div class="dept-card">
+      <div class="dept-icon">🏢</div>
+      <div class="dept-info">
+        <div class="dept-name">${d.nombre}</div>
+        <div class="dept-meta">${freqLabel(d.frecuencia)} · ${cnt} equipo${cnt !== 1 ? 's' : ''}${venc ? ` · <span style="color:var(--danger)">${venc} vencido${venc>1?'s':''}</span>` : ''}</div>
+      </div>
+      <span class="badge badge-blue">${freqLabel(d.frecuencia)}</span>
+      <button class="btn btn-danger btn-sm" onclick="eliminarDept(${d.id})">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+// ======= GUARDAR =======
+function guardarMantenimiento() {
+  const fecha    = document.getElementById('r-fecha').value;
+  const equipoId = parseInt(document.getElementById('r-equipo').value);
+  const tipo     = document.getElementById('r-tipo').value;
+  const tecnico  = document.getElementById('r-tecnico').value.trim();
+  const desc     = document.getElementById('r-desc').value.trim();
+  const costo    = parseFloat(document.getElementById('r-costo').value) || 0;
+  const ref      = document.getElementById('r-ref').value.trim();
+  const msg      = document.getElementById('r-msg');
+
+  if (!fecha || !equipoId || !tipo || !tecnico || !desc) {
+    msg.className = 'msg-err'; msg.textContent = '⚠ Complete todos los campos obligatorios.'; return;
+  }
+  db.mantenimientos.push({ id: db.nextId.mant++, fecha, equipoId, tipo, tecnico, descripcion: desc, costo, ref });
+  saveDB();
+  msg.className = 'msg-ok'; msg.textContent = '✓ Registro guardado correctamente.';
+  ['r-equipo','r-tipo'].forEach(id => document.getElementById(id).value = '');
+  ['r-tecnico','r-desc','r-costo','r-ref'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('r-fecha').valueAsDate = new Date();
+  setTimeout(() => msg.textContent = '', 3500);
+}
+
+function guardarEquipo() {
+  const nombre   = document.getElementById('e-nombre').value.trim();
+  const deptId   = parseInt(document.getElementById('e-dept').value);
+  const tipo     = document.getElementById('e-tipo').value;
+  const modelo   = document.getElementById('e-modelo').value.trim();
+  const serie    = document.getElementById('e-serie').value.trim();
+  const ubicacion= document.getElementById('e-ubicacion').value.trim();
+  const msg      = document.getElementById('e-msg');
+
+  if (!nombre || !deptId) { msg.className = 'msg-err'; msg.textContent = '⚠ Complete nombre y departamento.'; return; }
+  db.equipos.push({ id: db.nextId.equipo++, nombre, tipo, deptId, modelo, serie, ubicacion });
+  saveDB();
+  msg.className = 'msg-ok'; msg.textContent = '✓ Equipo agregado.';
+  ['e-nombre','e-modelo','e-serie','e-ubicacion'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('e-dept').value = '';
+  renderEquipos();
+  setTimeout(() => msg.textContent = '', 3500);
+}
+
+function guardarDepartamento() {
+  const nombre    = document.getElementById('d-nombre').value.trim();
+  const frecuencia= parseInt(document.getElementById('d-freq').value);
+  const msg       = document.getElementById('d-msg');
+  if (!nombre) { msg.className = 'msg-err'; msg.textContent = '⚠ Ingrese el nombre.'; return; }
+  db.departamentos.push({ id: db.nextId.dept++, nombre, frecuencia });
+  saveDB();
+  msg.className = 'msg-ok'; msg.textContent = '✓ Departamento creado.';
+  document.getElementById('d-nombre').value = '';
+  renderDepartamentos(); populateSelects();
+  setTimeout(() => msg.textContent = '', 3500);
+}
+
+// ======= ELIMINAR =======
+function eliminarMant(id) {
+  if (!confirm('¿Eliminar este registro?')) return;
+  db.mantenimientos = db.mantenimientos.filter(m => m.id !== id);
+  saveDB(); renderHistorial();
+}
+
+function eliminarEquipo(id) {
+  const cnt = db.mantenimientos.filter(m => m.equipoId == id).length;
+  if (cnt > 0 && !confirm(`Este equipo tiene ${cnt} registro(s). ¿Continuar?`)) return;
+  db.mantenimientos = db.mantenimientos.filter(m => m.equipoId !== id);
+  db.equipos = db.equipos.filter(e => e.id !== id);
+  saveDB(); renderEquipos();
+}
+
+function eliminarDept(id) {
+  const cnt = db.equipos.filter(e => e.deptId == id).length;
+  if (cnt > 0) { alert(`Este departamento tiene ${cnt} equipo(s) asignado(s). Elimínelos primero.`); return; }
+  db.departamentos = db.departamentos.filter(d => d.id !== id);
+  saveDB(); renderDepartamentos();
+}
+
+// ======= EXPORT =======
+function exportarCSV() {
+  const headers = ['ID','Fecha','Equipo','Departamento','Tipo','Tecnico','Descripcion','Costo','Referencia'];
+  const rows = db.mantenimientos.sort((a,b) => b.fecha.localeCompare(a.fecha)).map(m => {
+    const eq = getEquip(m.equipoId); const dept = getDept(eq?.deptId);
+    return [m.id, m.fecha, eq?.nombre || '', dept?.nombre || '', m.tipo, m.tecnico,
+      '"' + (m.descripcion || '').replace(/"/g,'""') + '"', m.costo || 0, m.ref || ''].join(',');
+  });
+  const csv = [headers.join(','), ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'mantenimientos_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
+
+// ======= INIT =======
+document.getElementById('r-fecha').valueAsDate = new Date();
+populateSelects();
+renderDashboard();
+</script>
+</body>
+</html>
