@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SistemaMant Pro — Control de Mantenimiento</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -828,6 +827,22 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
 <body>
 <div class="shell">
 
+  <!-- LOADING OVERLAY -->
+  <div id="loading-overlay" style="
+    position:fixed;inset:0;background:var(--bg);z-index:9999;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;
+  ">
+    <div style="font-size:2.5rem">⚙️</div>
+    <div style="font-size:1rem;font-weight:600;color:var(--text)">Conectando a Supabase...</div>
+    <div style="font-size:0.82rem;color:var(--text3)">Cargando datos, por favor espera</div>
+    <div style="width:180px;height:4px;background:var(--surface3);border-radius:99px;overflow:hidden;margin-top:0.5rem">
+      <div id="load-bar" style="height:100%;background:var(--accent);border-radius:99px;animation:load-progress 2s ease-out forwards"></div>
+    </div>
+  </div>
+  <style>
+  @keyframes load-progress { from { width:0% } to { width:100% } }
+  </style>
+
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="logo">
@@ -856,8 +871,8 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
     </nav>
     <div class="sidebar-footer">
       <div class="sidebar-badge">
-        <div class="pulse"></div>
-        <span>Datos locales activos</span>
+        <div class="pulse" id="db-pulse"></div>
+        <span id="db-status-text">Conectando...</span>
       </div>
     </div>
   </aside>
@@ -1145,40 +1160,109 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
 </div>
 
 <script>
-  // ===== CONFIGURACIÓN SUPABASE =====
-  // REEMPLAZA ESTOS VALORES CON LOS TUYOS
-  const SUPABASE_URL = 'https://tnnqkskywaofcgansusb.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRubnFrc2t5d2FvZmNnYW5zdXNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxODE3ODMsImV4cCI6MjA5Mzc1Nzc4M30.dvoPpal_8BUN_yDi8Hx38iPbuv9ARucOjSnuH5UNwMk';
-  
-  const { createClient } = window.supabase;
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-  
-  let db = { departamentos: [], equipos: [], mantenimientos: [] };
-  
-  // ===== CARGAR DATOS DESDE SUPABASE =====
-  async function loadData() {
-    try {
-      const [deptRes, equipRes, mantRes] = await Promise.all([
-        supabase.from('departamentos').select('*'),
-        supabase.from('equipos').select('*'),
-        supabase.from('mantenimientos').select('*')
-      ]);
-      
-      if (deptRes.error) throw deptRes.error;
-      if (equipRes.error) throw equipRes.error;
-      if (mantRes.error) throw mantRes.error;
-  
-      db.departamentos = deptRes.data || [];
-      db.equipos = equipRes.data || [];
-      db.mantenimientos = mantRes.data || [];
-  
-      console.log('✅ Datos cargados desde Supabase');
-      renderDashboard();
-    } catch(e) {
-      console.error('❌ Error cargando datos:', e.message);
-      alert('Error de conexión a Supabase. Verifica las credenciales.');
-    }
+/*
+  =====================================================
+  ESQUEMA SUPABASE — Ejecutar en el SQL Editor una vez
+  =====================================================
+
+  create table departamentos (
+    id         bigint generated always as identity primary key,
+    nombre     text not null,
+    frecuencia int  not null default 90
+  );
+
+  create table equipos (
+    id        bigint generated always as identity primary key,
+    nombre    text   not null,
+    tipo      text   not null default 'Desktop',
+    dept_id   bigint references departamentos(id),
+    modelo    text,
+    serie     text,
+    ubicacion text
+  );
+
+  create table mantenimientos (
+    id          bigint generated always as identity primary key,
+    fecha       date   not null,
+    equipo_id   bigint references equipos(id),
+    tipo        text   not null,
+    tecnico     text   not null,
+    descripcion text,
+    costo       numeric(10,2) default 0,
+    ref         text
+  );
+
+  -- Habilitar RLS (Row Level Security) — permitir anon por ahora:
+  alter table departamentos  enable row level security;
+  alter table equipos         enable row level security;
+  alter table mantenimientos  enable row level security;
+
+  create policy "allow all" on departamentos  for all using (true) with check (true);
+  create policy "allow all" on equipos         for all using (true) with check (true);
+  create policy "allow all" on mantenimientos  for all using (true) with check (true);
+  =====================================================
+*/
+const SUPABASE_URL  = 'https://tnnqkskywaofcgansusb.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRubnFrc2t5d2FvZmNnYW5zdXNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxODE3ODMsImV4cCI6MjA5Mzc1Nzc4M30.dvoPpal_8BUN_yDi8Hx38iPbuv9ARucOjSnuH5UNwMk';
+
+const sbHeaders = {
+  'Content-Type': 'application/json',
+  'apikey': SUPABASE_ANON,
+  'Authorization': `Bearer ${SUPABASE_ANON}`,
+  'Prefer': 'return=representation'
+};
+
+async function sbGet(table, params = '') {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, { headers: sbHeaders });
+  if (!res.ok) throw new Error(`GET ${table}: ${res.status} ${await res.text()}`);
+  return res.json();
+}
+
+async function sbPost(table, body) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: 'POST', headers: sbHeaders, body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(`POST ${table}: ${res.status} ${await res.text()}`);
+  return res.json();
+}
+
+async function sbDelete(table, filter) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${filter}`, {
+    method: 'DELETE', headers: { ...sbHeaders, 'Prefer': 'return=minimal' }
+  });
+  if (!res.ok) throw new Error(`DELETE ${table}: ${res.status} ${await res.text()}`);
+}
+
+// ======= IN-MEMORY DB (cache) =======
+let db = { departamentos: [], equipos: [], mantenimientos: [] };
+
+// DB status indicator
+function setDbStatus(ok, msg) {
+  const pulse = document.getElementById('db-pulse');
+  const text  = document.getElementById('db-status-text');
+  if (pulse) pulse.style.background = ok ? 'var(--success)' : 'var(--danger)';
+  if (text)  text.textContent = msg;
+}
+
+// ======= LOAD ALL DATA =======
+async function loadDB() {
+  try {
+    setDbStatus(true, 'Cargando datos...');
+    const [depts, equipos, mants] = await Promise.all([
+      sbGet('departamentos', 'order=nombre.asc'),
+      sbGet('equipos',       'order=nombre.asc'),
+      sbGet('mantenimientos','order=fecha.desc')
+    ]);
+    db.departamentos  = depts.map(d => ({ id: d.id, nombre: d.nombre, frecuencia: d.frecuencia }));
+    db.equipos        = equipos.map(e => ({ id: e.id, nombre: e.nombre, tipo: e.tipo, deptId: e.dept_id, modelo: e.modelo, serie: e.serie, ubicacion: e.ubicacion }));
+    db.mantenimientos = mants.map(m => ({ id: m.id, fecha: m.fecha, equipoId: m.equipo_id, tipo: m.tipo, tecnico: m.tecnico, descripcion: m.descripcion, costo: m.costo, ref: m.ref }));
+    setDbStatus(true, 'Supabase conectado');
+  } catch(err) {
+    console.error('loadDB error:', err);
+    setDbStatus(false, 'Error de conexión');
+    alert('⚠ No se pudo cargar datos desde Supabase.\n\nAsegúrate de que las tablas existan:\n• departamentos\n• equipos\n• mantenimientos\n\nDetalle: ' + err.message);
   }
+}
 
 // ======= HELPERS =======
 const getDept  = id => db.departamentos.find(d => d.id == id);
@@ -1493,67 +1577,88 @@ async function guardarMantenimiento() {
   const costo    = parseFloat(document.getElementById('r-costo').value) || 0;
   const ref      = document.getElementById('r-ref').value.trim();
   const msg      = document.getElementById('r-msg');
+  const btn      = document.querySelector('#page-registro .btn-primary');
 
   if (!fecha || !equipoId || !tipo || !tecnico || !desc) {
     msg.className = 'msg-err'; msg.textContent = '⚠ Complete todos los campos obligatorios.'; return;
   }
+
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  msg.className = ''; msg.textContent = '';
   try {
-    const { error } = await supabase.from('mantenimientos').insert([
-      { fecha, equipoId, tipo, tecnico, descripcion: desc, costo, ref }
-    ]);
-    if (error) throw error;
+    const [inserted] = await sbPost('mantenimientos', {
+      fecha, equipo_id: equipoId, tipo, tecnico, descripcion: desc, costo, ref
+    });
+    db.mantenimientos.unshift({ id: inserted.id, fecha, equipoId, tipo, tecnico, descripcion: desc, costo, ref });
     msg.className = 'msg-ok'; msg.textContent = '✓ Registro guardado correctamente.';
     ['r-equipo','r-tipo'].forEach(id => document.getElementById(id).value = '');
     ['r-tecnico','r-desc','r-costo','r-ref'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('r-fecha').valueAsDate = new Date();
-    await loadData();
     setTimeout(() => msg.textContent = '', 3500);
-  } catch(e) {
-    msg.className = 'msg-err'; msg.textContent = '❌ Error: ' + e.message;
+  } catch(err) {
+    msg.className = 'msg-err'; msg.textContent = '⚠ Error al guardar: ' + err.message;
+    console.error(err);
+  } finally {
+    btn.disabled = false; btn.textContent = '✓ Guardar registro';
   }
 }
 
 async function guardarEquipo() {
-  const nombre   = document.getElementById('e-nombre').value.trim();
-  const deptId   = parseInt(document.getElementById('e-dept').value);
-  const tipo     = document.getElementById('e-tipo').value;
-  const modelo   = document.getElementById('e-modelo').value.trim();
-  const serie    = document.getElementById('e-serie').value.trim();
-  const ubicacion= document.getElementById('e-ubicacion').value.trim();
-  const msg      = document.getElementById('e-msg');
+  const nombre    = document.getElementById('e-nombre').value.trim();
+  const deptId    = parseInt(document.getElementById('e-dept').value);
+  const tipo      = document.getElementById('e-tipo').value;
+  const modelo    = document.getElementById('e-modelo').value.trim();
+  const serie     = document.getElementById('e-serie').value.trim();
+  const ubicacion = document.getElementById('e-ubicacion').value.trim();
+  const msg       = document.getElementById('e-msg');
+  const btn       = document.querySelector('#page-equipos .btn-primary');
 
   if (!nombre || !deptId) { msg.className = 'msg-err'; msg.textContent = '⚠ Complete nombre y departamento.'; return; }
+
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  msg.className = ''; msg.textContent = '';
   try {
-    const { error } = await supabase.from('equipos').insert([
-      { nombre, tipo, deptId, modelo, serie, ubicacion }
-    ]);
-    if (error) throw error;
+    const [inserted] = await sbPost('equipos', {
+      nombre, tipo, dept_id: deptId, modelo, serie, ubicacion
+    });
+    db.equipos.push({ id: inserted.id, nombre, tipo, deptId, modelo, serie, ubicacion });
+    db.equipos.sort((a,b) => a.nombre.localeCompare(b.nombre));
     msg.className = 'msg-ok'; msg.textContent = '✓ Equipo agregado.';
     ['e-nombre','e-modelo','e-serie','e-ubicacion'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('e-dept').value = '';
-    await loadData();
+    renderEquipos();
     setTimeout(() => msg.textContent = '', 3500);
-  } catch(e) {
-    msg.className = 'msg-err'; msg.textContent = '❌ Error: ' + e.message;
+  } catch(err) {
+    msg.className = 'msg-err'; msg.textContent = '⚠ Error al guardar: ' + err.message;
+    console.error(err);
+  } finally {
+    btn.disabled = false; btn.textContent = '➕ Agregar equipo';
   }
 }
 
 async function guardarDepartamento() {
-  const nombre    = document.getElementById('d-nombre').value.trim();
-  const frecuencia= parseInt(document.getElementById('d-freq').value);
-  const msg       = document.getElementById('d-msg');
+  const nombre     = document.getElementById('d-nombre').value.trim();
+  const frecuencia = parseInt(document.getElementById('d-freq').value);
+  const msg        = document.getElementById('d-msg');
+  const btn        = document.querySelector('#page-departamentos .btn-primary');
+
   if (!nombre) { msg.className = 'msg-err'; msg.textContent = '⚠ Ingrese el nombre.'; return; }
+
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  msg.className = ''; msg.textContent = '';
   try {
-    const { error } = await supabase.from('departamentos').insert([
-      { nombre, frecuencia }
-    ]);
-    if (error) throw error;
+    const [inserted] = await sbPost('departamentos', { nombre, frecuencia });
+    db.departamentos.push({ id: inserted.id, nombre, frecuencia });
+    db.departamentos.sort((a,b) => a.nombre.localeCompare(b.nombre));
     msg.className = 'msg-ok'; msg.textContent = '✓ Departamento creado.';
     document.getElementById('d-nombre').value = '';
-    await loadData();
+    renderDepartamentos(); populateSelects();
     setTimeout(() => msg.textContent = '', 3500);
-  } catch(e) {
-    msg.className = 'msg-err'; msg.textContent = '❌ Error: ' + e.message;
+  } catch(err) {
+    msg.className = 'msg-err'; msg.textContent = '⚠ Error al guardar: ' + err.message;
+    console.error(err);
+  } finally {
+    btn.disabled = false; btn.textContent = '➕ Agregar departamento';
   }
 }
 
@@ -1561,31 +1666,38 @@ async function guardarDepartamento() {
 async function eliminarMant(id) {
   if (!confirm('¿Eliminar este registro?')) return;
   try {
-    const { error } = await supabase.from('mantenimientos').delete().eq('id', id);
-    if (error) throw error;
-    await loadData(); renderHistorial();
-  } catch(e) { alert('Error: ' + e.message); }
+    await sbDelete('mantenimientos', `id=eq.${id}`);
+    db.mantenimientos = db.mantenimientos.filter(m => m.id !== id);
+    renderHistorial();
+  } catch(err) {
+    alert('Error al eliminar: ' + err.message); console.error(err);
+  }
 }
 
 async function eliminarEquipo(id) {
   const cnt = db.mantenimientos.filter(m => m.equipoId == id).length;
-  if (cnt > 0 && !confirm(`Este equipo tiene ${cnt} registro(s). ¿Continuar?`)) return;
+  if (cnt > 0 && !confirm(`Este equipo tiene ${cnt} registro(s). ¿Eliminar también todos sus mantenimientos?`)) return;
   try {
-    await supabase.from('mantenimientos').delete().eq('equipoId', id);
-    const { error } = await supabase.from('equipos').delete().eq('id', id);
-    if (error) throw error;
-    await loadData(); renderEquipos();
-  } catch(e) { alert('Error: ' + e.message); }
+    if (cnt > 0) await sbDelete('mantenimientos', `equipo_id=eq.${id}`);
+    await sbDelete('equipos', `id=eq.${id}`);
+    db.mantenimientos = db.mantenimientos.filter(m => m.equipoId !== id);
+    db.equipos = db.equipos.filter(e => e.id !== id);
+    renderEquipos();
+  } catch(err) {
+    alert('Error al eliminar: ' + err.message); console.error(err);
+  }
 }
 
 async function eliminarDept(id) {
   const cnt = db.equipos.filter(e => e.deptId == id).length;
   if (cnt > 0) { alert(`Este departamento tiene ${cnt} equipo(s) asignado(s). Elimínelos primero.`); return; }
   try {
-    const { error } = await supabase.from('departamentos').delete().eq('id', id);
-    if (error) throw error;
-    await loadData(); renderDepartamentos();
-  } catch(e) { alert('Error: ' + e.message); }
+    await sbDelete('departamentos', `id=eq.${id}`);
+    db.departamentos = db.departamentos.filter(d => d.id !== id);
+    renderDepartamentos();
+  } catch(err) {
+    alert('Error al eliminar: ' + err.message); console.error(err);
+  }
 }
 
 // ======= EXPORT =======
@@ -1604,8 +1716,17 @@ function exportarCSV() {
 }
 
 // ======= INIT =======
-document.getElementById('r-fecha').valueAsDate = new Date();
-loadData();
+async function init() {
+  document.getElementById('r-fecha').valueAsDate = new Date();
+  await loadDB();
+  populateSelects();
+  renderDashboard();
+  // Hide loading overlay
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) { overlay.style.opacity = '0'; overlay.style.transition = 'opacity 0.4s'; setTimeout(() => overlay.remove(), 400); }
+}
+
+init();
 </script>
 </body>
 </html>
