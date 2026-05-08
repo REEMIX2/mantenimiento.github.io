@@ -1078,16 +1078,13 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
             </div>
             <div class="form-group">
               <label>Técnico responsable *</label>
-              <input type="text" id="r-tecnico" placeholder="Nombre del técnico">
+              <select id="r-tecnico">
+                <option value="">Seleccione un técnico...</option>
+                <option value="Roy Moreno">Roy Moreno</option>
+                <option value="Arnoldo Muñoz">Arnoldo Muñoz</option>
+              </select>
             </div>
-            <div class="form-group">
-              <label>Costo (USD, opcional)</label>
-              <input type="number" id="r-costo" placeholder="0.00" min="0" step="0.01">
-            </div>
-            <div class="form-group">
-              <label>Nº de orden / referencia</label>
-              <input type="text" id="r-ref" placeholder="OT-2026-001">
-            </div>
+
             <div class="form-group full">
               <label>Descripción del trabajo *</label>
               <textarea id="r-desc" placeholder="Detalle los trabajos realizados, piezas reemplazadas, software instalado, observaciones..."></textarea>
@@ -1100,7 +1097,7 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
                 ondrop="handleImgDrop(event)">
                 <input type="file" id="r-imgs" accept="image/*" multiple onchange="handleImgSelect(event)">
                 <div class="img-upload-icon">📷</div>
-                <div class="img-upload-text">Toca para tomar foto o subir desde galería</div>
+                <div class="img-upload-text">Toca para subir desde galería</div>
                 <div class="img-upload-sub">JPG, PNG, WEBP — máx. 5 MB por imagen</div>
               </div>
               <div class="img-preview-grid" id="img-preview-grid"></div>
@@ -1136,7 +1133,7 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
               <thead>
                 <tr>
                   <th>Fecha</th><th>Equipo</th><th>Departamento</th><th>Tipo</th>
-                  <th>Técnico</th><th>Descripción</th><th>Costo</th><th>Ref.</th><th></th>
+                  <th>Técnico</th><th>Descripción</th><th></th>
                 </tr>
               </thead>
               <tbody id="tbody-historial"></tbody>
@@ -1697,11 +1694,9 @@ function renderHistorial() {
       <td data-label="Tipo"><span class="badge badge-blue">${m.tipo}</span></td>
       <td data-label="Técnico">${m.tecnico}</td>
       <td data-label="Descripción" style="max-width:200px;font-size:0.85rem;color:var(--text2);line-height:1.4">${m.descripcion}${m.imagenes && m.imagenes.length ? `<div class="mant-imgs">${m.imagenes.map(url => `<img class="mant-img-thumb" src="${url}" alt="foto" onclick="openImgModal('${url}')" title="Ver foto">`).join('')}</div>` : ''}</td>
-      <td data-label="Costo" class="td-mono">${m.costo ? '$' + parseFloat(m.costo).toFixed(2) : '<span style="color:var(--text3)">—</span>'}</td>
-      <td data-label="Ref." class="td-mono" style="font-size:0.78rem;color:var(--text3)">${m.ref || '—'}</td>
       <td><button class="btn btn-danger btn-sm" onclick="eliminarMant(${m.id})">🗑</button></td>
     </tr>`;
-  }).join('') : '<tr><td colspan="9"><div class="empty-state"><div class="empty-state-icon">📋</div><p>No se encontraron registros</p></div></td></tr>';
+  }).join('') : '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">📋</div><p>No se encontraron registros</p></div></td></tr>';
 }
 
 // ======= EQUIPOS =======
@@ -1751,10 +1746,8 @@ async function guardarMantenimiento() {
   const fecha    = document.getElementById('r-fecha').value;
   const equipoId = parseInt(document.getElementById('r-equipo').value);
   const tipo     = document.getElementById('r-tipo').value;
-  const tecnico  = document.getElementById('r-tecnico').value.trim();
+  const tecnico  = document.getElementById('r-tecnico').value;
   const desc     = document.getElementById('r-desc').value.trim();
-  const costo    = parseFloat(document.getElementById('r-costo').value) || 0;
-  const ref      = document.getElementById('r-ref').value.trim();
   const msg      = document.getElementById('r-msg');
   const btn      = document.querySelector('#page-registro .btn-primary');
 
@@ -1767,7 +1760,7 @@ async function guardarMantenimiento() {
   try {
     // 1. Insert mantenimiento first to get the ID
     const [inserted] = await sbPost('mantenimientos', {
-      fecha, equipo_id: equipoId, tipo, tecnico, descripcion: desc, costo, ref, imagenes: []
+      fecha, equipo_id: equipoId, tipo, tecnico, descripcion: desc, imagenes: []
     });
 
     // 2. Upload images if any
@@ -1785,12 +1778,12 @@ async function guardarMantenimiento() {
       }
     }
 
-    db.mantenimientos.unshift({ id: inserted.id, fecha, equipoId, tipo, tecnico, descripcion: desc, costo, ref, imagenes });
+    db.mantenimientos.unshift({ id: inserted.id, fecha, equipoId, tipo, tecnico, descripcion: desc, imagenes });
     msg.className = 'msg-ok'; msg.textContent = `✓ Registro guardado${imagenes.length ? ` con ${imagenes.length} foto(s)` : ''}.`;
 
     // Reset form
     ['r-equipo','r-tipo'].forEach(id => document.getElementById(id).value = '');
-    ['r-tecnico','r-desc','r-costo','r-ref'].forEach(id => document.getElementById(id).value = '');
+    ['r-tecnico','r-desc'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('r-fecha').valueAsDate = new Date();
     pendingImgs.forEach(i => URL.revokeObjectURL(i.objectUrl));
     pendingImgs = [];
@@ -1903,11 +1896,11 @@ async function eliminarDept(id) {
 
 // ======= EXPORT =======
 function exportarCSV() {
-  const headers = ['ID','Fecha','Equipo','Departamento','Tipo','Tecnico','Descripcion','Costo','Referencia'];
+  const headers = ['ID','Fecha','Equipo','Departamento','Tipo','Tecnico','Descripcion'];
   const rows = db.mantenimientos.sort((a,b) => b.fecha.localeCompare(a.fecha)).map(m => {
     const eq = getEquip(m.equipoId); const dept = getDept(eq?.deptId);
     return [m.id, m.fecha, eq?.nombre || '', dept?.nombre || '', m.tipo, m.tecnico,
-      '"' + (m.descripcion || '').replace(/"/g,'""') + '"', m.costo || 0, m.ref || ''].join(',');
+      '"' + (m.descripcion || '').replace(/"/g,'""') + '"'].join(',');
   });
   const csv = [headers.join(','), ...rows].join('\n');
   const a = document.createElement('a');
