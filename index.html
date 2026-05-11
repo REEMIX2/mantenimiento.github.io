@@ -686,6 +686,70 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
 }
 .mant-img-thumb:hover { opacity: 0.8; }
 
+/* Quick maintenance modal */
+.quick-modal-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 8000;
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.quick-modal-backdrop.open { display: flex; }
+.quick-modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem;
+  width: 100%;
+  max-width: 480px;
+  margin: 1rem;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  animation: fade-up 0.2s ease;
+}
+.quick-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+.quick-modal-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+.quick-modal-close {
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--text2); border-radius: 8px;
+  width: 30px; height: 30px; cursor: pointer; font-size: 1rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+}
+.quick-modal-close:hover { background: var(--surface3); color: var(--text); }
+.quick-modal-eq {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 1.25rem;
+  font-size: 0.88rem; display: flex; align-items: center; gap: 0.6rem;
+}
+.quick-modal-eq strong { color: var(--text); font-weight: 700; }
+.quick-modal-eq span { color: var(--text2); }
+.btn-success {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid rgba(34,211,160,0.3);
+}
+.btn-success:hover { background: rgba(34,211,160,0.2); }
+
+/* Alert action button */
+.alert-action {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 0.3rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.75rem; font-weight: 600;
+  cursor: pointer; border: none;
+  font-family: 'Outfit', sans-serif;
+  margin-top: 6px;
+  transition: all var(--transition);
+  background: rgba(91,110,245,0.15);
+  color: var(--accent2);
+  border: 1px solid rgba(91,110,245,0.25);
+}
+.alert-action:hover { background: rgba(91,110,245,0.28); }
+
 /* Empty state */
 .empty-state {
   text-align: center;
@@ -1184,6 +1248,16 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
         <div class="card">
           <div class="card-header">
             <div class="card-title">Inventario de equipos</div>
+            <span id="eq-count" style="font-size:0.82rem;color:var(--text2);"></span>
+          </div>
+          <div class="filter-bar" style="margin-bottom:1rem;">
+            <input type="text" id="eq-buscar" placeholder="🔍 Buscar equipo, modelo, serie..." oninput="renderEquipos()">
+            <select id="eq-dept" onchange="renderEquipos()"><option value="">Todos los departamentos</option></select>
+            <select id="eq-tipo" onchange="renderEquipos()">
+              <option value="">Todos los tipos</option>
+              <option>Desktop</option><option>Laptop</option><option>Servidor</option>
+              <option>Impresora</option><option>Monitor</option><option>Tablet</option><option>Otro</option>
+            </select>
           </div>
           <div class="table-wrap">
             <table>
@@ -1251,6 +1325,52 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
 
     </div>
   </main>
+</div>
+
+<!-- QUICK MAINTENANCE MODAL -->
+<div class="quick-modal-backdrop" id="quick-modal" onclick="closeQuickModal(event)">
+  <div class="quick-modal">
+    <div class="quick-modal-header">
+      <div class="quick-modal-title">⚡ Registrar mantenimiento rápido</div>
+      <button class="quick-modal-close" onclick="closeQuickModal()">✕</button>
+    </div>
+    <div class="quick-modal-eq" id="qm-eq-info">
+      <span>🖥</span><div><strong id="qm-eq-name">—</strong><br><span id="qm-eq-dept">—</span></div>
+    </div>
+    <div class="form-grid" style="gap:0.9rem;">
+      <div class="form-group">
+        <label>Fecha *</label>
+        <input type="date" id="qm-fecha">
+      </div>
+      <div class="form-group">
+        <label>Tipo *</label>
+        <select id="qm-tipo">
+          <option value="">— Tipo —</option>
+          <option>Preventivo</option><option>Correctivo</option>
+          <option>Limpieza interna</option><option>Actualización de software</option>
+          <option>Cambio de componente</option><option>Revisión general</option>
+          <option>Formateo / Reinstalación</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Técnico *</label>
+        <select id="qm-tecnico">
+          <option value="">— Técnico —</option>
+          <option value="Roy Moreno">Roy Moreno</option>
+          <option value="Arnoldo Muñoz">Arnoldo Muñoz</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Descripción *</label>
+        <textarea id="qm-desc" placeholder="Trabajo realizado..." style="min-height:70px;"></textarea>
+      </div>
+    </div>
+    <div style="margin-top:1.1rem; display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+      <button class="btn btn-success" onclick="guardarMantenimientoRapido()" id="qm-btn">✓ Guardar</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeQuickModal()">Cancelar</button>
+      <div id="qm-msg"></div>
+    </div>
+  </div>
 </div>
 
 <!-- IMAGE MODAL -->
@@ -1523,6 +1643,15 @@ function populateSelects() {
   sel('f-dept', '<option value="">Todos los departamentos</option>' +
     db.departamentos.map(d => `<option value="${d.id}">${d.nombre}</option>`).join(''));
 
+  // Equipment page filters
+  const eqDeptEl = document.getElementById('eq-dept');
+  if (eqDeptEl) {
+    const curV = eqDeptEl.value;
+    eqDeptEl.innerHTML = '<option value="">Todos los departamentos</option>' +
+      db.departamentos.map(d => `<option value="${d.id}">${d.nombre}</option>`).join('');
+    eqDeptEl.value = curV;
+  }
+
   const years = [...new Set(db.mantenimientos.map(m => m.fecha.slice(0,4)))].sort().reverse();
   sel('f-anio', '<option value="">Todos los años</option>' +
     years.map(y => `<option value="${y}">${y}</option>`).join(''));
@@ -1589,11 +1718,11 @@ function renderDashboard() {
     const est  = estadoEquipo(e.id);
     const dept = getDept(e.deptId);
     if (est.label === 'Vencido') {
-      alertas += `<div class="alert-item alert-danger"><div class="alert-icon">🔴</div><div class="alert-body"><strong>${e.nombre}</strong> · ${dept?.nombre || '—'}<div class="alert-sub">Vencido hace ${Math.abs(est.dias)} días</div></div></div>`;
+      alertas += `<div class="alert-item alert-danger"><div class="alert-icon">🔴</div><div class="alert-body"><strong>${e.nombre}</strong> · ${dept?.nombre || '—'}<div class="alert-sub">Vencido hace ${Math.abs(est.dias)} días</div><button class="alert-action" onclick="openQuickModal(${e.id})">⚡ Marcar mantenimiento</button></div></div>`;
     } else if (est.label === 'Sin mantenimiento') {
-      alertas += `<div class="alert-item alert-danger"><div class="alert-icon">⚫</div><div class="alert-body"><strong>${e.nombre}</strong> · ${dept?.nombre || '—'}<div class="alert-sub">Sin historial de mantenimiento</div></div></div>`;
+      alertas += `<div class="alert-item alert-danger"><div class="alert-icon">⚫</div><div class="alert-body"><strong>${e.nombre}</strong> · ${dept?.nombre || '—'}<div class="alert-sub">Sin historial de mantenimiento</div><button class="alert-action" onclick="openQuickModal(${e.id})">⚡ Marcar mantenimiento</button></div></div>`;
     } else if (est.label === 'Por vencer') {
-      alertas += `<div class="alert-item alert-warn"><div class="alert-icon">🟡</div><div class="alert-body"><strong>${e.nombre}</strong> · ${dept?.nombre || '—'}<div class="alert-sub">Vence en ${est.dias} días</div></div></div>`;
+      alertas += `<div class="alert-item alert-warn"><div class="alert-icon">🟡</div><div class="alert-body"><strong>${e.nombre}</strong> · ${dept?.nombre || '—'}<div class="alert-sub">Vence en ${est.dias} días</div><button class="alert-action" onclick="openQuickModal(${e.id})">⚡ Marcar mantenimiento</button></div></div>`;
     }
   });
   document.getElementById('alertas-zone').innerHTML = alertas || '<div class="alert-item alert-ok">✅ Todos los equipos están al día</div>';
@@ -1702,14 +1831,48 @@ function renderHistorial() {
 // ======= EQUIPOS =======
 function renderEquipos() {
   populateSelects();
-  document.getElementById('tbody-equipos').innerHTML = db.equipos.length ? db.equipos.map(e => {
+  const buscar = (document.getElementById('eq-buscar')?.value || '').toLowerCase();
+  const deptF  = document.getElementById('eq-dept')?.value || '';
+  const tipoF  = document.getElementById('eq-tipo')?.value || '';
+
+  let equipos = [...db.equipos];
+  if (buscar) equipos = equipos.filter(e => [e.nombre, e.modelo, e.serie, e.ubicacion].some(v => v?.toLowerCase().includes(buscar)));
+  if (deptF)  equipos = equipos.filter(e => e.deptId == deptF);
+  if (tipoF)  equipos = equipos.filter(e => e.tipo === tipoF);
+
+  // Group by department when a dept filter is NOT active
+  const countEl = document.getElementById('eq-count');
+  if (countEl) countEl.textContent = `${equipos.length} equipo${equipos.length !== 1 ? 's' : ''}`;
+
+  if (!equipos.length) {
+    document.getElementById('tbody-equipos').innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-state-icon">💻</div><p>No se encontraron equipos</p></div></td></tr>';
+    return;
+  }
+
+  // Sort by department name then by equipo name
+  equipos.sort((a, b) => {
+    const dA = getDept(a.deptId)?.nombre || '~';
+    const dB = getDept(b.deptId)?.nombre || '~';
+    if (dA !== dB) return dA.localeCompare(dB);
+    return a.nombre.localeCompare(b.nombre);
+  });
+
+  // Group rows by department with separator headers
+  let html = '';
+  let lastDept = null;
+  equipos.forEach(e => {
     const dept = getDept(e.deptId);
-    const cnt  = db.mantenimientos.filter(m => m.equipoId == e.id).length;
-    const um   = ultimoMant(e.id);
-    return `<tr>
+    const deptName = dept?.nombre || '—';
+    if (deptName !== lastDept) {
+      html += `<tr style="background:var(--surface3);"><td colspan="9" style="padding:0.5rem 1rem;font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);border:none;">🏢 ${deptName}</td></tr>`;
+      lastDept = deptName;
+    }
+    const cnt = db.mantenimientos.filter(m => m.equipoId == e.id).length;
+    const um  = ultimoMant(e.id);
+    html += `<tr>
       <td><div class="eq-cell"><div class="eq-avatar">${tipoIcon(e.tipo)}</div><div class="eq-name">${e.nombre}</div></div></td>
       <td data-label="Tipo">${e.tipo}</td>
-      <td data-label="Departamento">${dept?.nombre || '—'}</td>
+      <td data-label="Departamento">${deptName}</td>
       <td data-label="Modelo" style="color:var(--text2)">${e.modelo || '—'}</td>
       <td data-label="Serie" class="td-mono" style="color:var(--text2)">${e.serie || '—'}</td>
       <td data-label="Ubicación" style="color:var(--text2)">${e.ubicacion || '—'}</td>
@@ -1717,7 +1880,8 @@ function renderEquipos() {
       <td data-label="Último" class="td-mono">${um ? fmtFecha(um.fecha) : '<span style="color:var(--text3)">—</span>'}</td>
       <td><button class="btn btn-danger btn-sm" onclick="eliminarEquipo(${e.id})">🗑</button></td>
     </tr>`;
-  }).join('') : '<tr><td colspan="9"><div class="empty-state"><div class="empty-state-icon">💻</div><p>No hay equipos registrados</p></div></td></tr>';
+  });
+  document.getElementById('tbody-equipos').innerHTML = html;
 }
 
 // ======= DEPARTAMENTOS =======
@@ -1907,6 +2071,63 @@ function exportarCSV() {
   a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
   a.download = 'mantenimientos_' + new Date().toISOString().slice(0,10) + '.csv';
   a.click();
+}
+
+// ======= QUICK MAINTENANCE MODAL =======
+let qmEquipoId = null;
+
+function openQuickModal(eqId) {
+  qmEquipoId = eqId;
+  const eq   = getEquip(eqId);
+  const dept = getDept(eq?.deptId);
+  document.getElementById('qm-eq-name').textContent = eq?.nombre || '—';
+  document.getElementById('qm-eq-dept').textContent = dept?.nombre || '—';
+  document.getElementById('qm-fecha').valueAsDate = new Date();
+  document.getElementById('qm-tipo').value   = '';
+  document.getElementById('qm-tecnico').value = '';
+  document.getElementById('qm-desc').value   = '';
+  document.getElementById('qm-msg').className = '';
+  document.getElementById('qm-msg').textContent = '';
+  document.getElementById('quick-modal').classList.add('open');
+}
+
+function closeQuickModal(event) {
+  if (event && event.target !== document.getElementById('quick-modal')) return;
+  document.getElementById('quick-modal').classList.remove('open');
+  qmEquipoId = null;
+}
+
+async function guardarMantenimientoRapido() {
+  const fecha   = document.getElementById('qm-fecha').value;
+  const tipo    = document.getElementById('qm-tipo').value;
+  const tecnico = document.getElementById('qm-tecnico').value;
+  const desc    = document.getElementById('qm-desc').value.trim();
+  const msg     = document.getElementById('qm-msg');
+  const btn     = document.getElementById('qm-btn');
+
+  if (!fecha || !tipo || !tecnico || !desc) {
+    msg.className = 'msg-err'; msg.textContent = '⚠ Complete todos los campos.'; return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  msg.className = ''; msg.textContent = '';
+  try {
+    const [inserted] = await sbPost('mantenimientos', {
+      fecha, equipo_id: qmEquipoId, tipo, tecnico, descripcion: desc, imagenes: []
+    });
+    db.mantenimientos.unshift({ id: inserted.id, fecha, equipoId: qmEquipoId, tipo, tecnico, descripcion: desc, imagenes: [] });
+    msg.className = 'msg-ok'; msg.textContent = '✓ Guardado correctamente.';
+    setTimeout(() => {
+      document.getElementById('quick-modal').classList.remove('open');
+      qmEquipoId = null;
+      renderDashboard();
+    }, 1200);
+  } catch(err) {
+    msg.className = 'msg-err'; msg.textContent = '⚠ Error: ' + err.message;
+    console.error(err);
+  } finally {
+    btn.disabled = false; btn.textContent = '✓ Guardar';
+  }
 }
 
 // ======= INIT =======
